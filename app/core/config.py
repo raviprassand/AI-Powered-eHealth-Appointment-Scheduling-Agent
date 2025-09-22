@@ -1,35 +1,49 @@
-from pydantic_settings import BaseSettings
 from typing import Optional
-import os
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 class Settings(BaseSettings):
+    # App
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "Patient Informatics AI Assistant"
-    
-    # Google AI Configuration
-    # GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    
-    # AWS Configuration
-    AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID", "")
-    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
-    AWS_REGION: str = os.getenv("AWS_REGION", "ca-central-1")
-    
-    # Database Configuration
-    DATABASE_HOST: str = os.getenv("DATABASE_HOST", "")
-    DATABASE_PORT: int = int(os.getenv("DATABASE_PORT", "3306"))
-    DATABASE_USER: str = os.getenv("DATABASE_USER", "")
-    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD", "")
-    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "")
-    
-    # Application Configuration
-    DEFAULT_PATIENT_ID: str = os.getenv("DEFAULT_PATIENT_ID", "143")
-    
-    # Vercel-specific settings
-    VERCEL_ENV: str = os.getenv("VERCEL_ENV", "development")
-    
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    DEFAULT_PATIENT_ID: str = "143"
+    VERCEL_ENV: str = "development"
+
+    # OpenAI
+    OPENAI_API_KEY: str = ""
+
+    # AWS
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
+    AWS_REGION: str = "ca-central-1"
+
+    # --- DB / API toggles ---
+    USE_DB_API: bool = False
+    DATABASE_API_URL: Optional[str] = None  # only required if USE_DB_API=True
+
+    # Direct SQL mode (e.g., SQLite)
+    SQL_URI: Optional[str] = None  # e.g., "sqlite:///./demo.db"
+
+    # Legacy MySQL fields (unused if SQL_URI is set)
+    DATABASE_HOST: str = ""
+    DATABASE_PORT: int = 3306
+    DATABASE_USER: str = ""
+    DATABASE_PASSWORD: str = ""
+    DATABASE_NAME: str = ""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",  # ignore unexpected env keys instead of crashing
+    )
+
+    @field_validator("DATABASE_API_URL")
+    @classmethod
+    def _require_api_url_if_use_api(cls, v, info):
+        # if USE_DB_API=True, require DATABASE_API_URL
+        values = info.data  # pydantic v2: get other fields
+        if values.get("USE_DB_API") and not v:
+            raise ValueError("DATABASE_API_URL must be set when USE_DB_API=True")
+        return v
 
 settings = Settings()
