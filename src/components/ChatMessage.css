@@ -1,0 +1,122 @@
+/* src/components/ChatMessage.css - Updated */
+.message-wrapper {
+  /* Layout handled in ChatContainer.css */
+}
+
+.message-body {
+  /* Container for message content */
+}
+
+.processing-message {
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* Make text content consistent with HTML content */
+.message-content .message-text {
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+/* Override for formatted responses in chat bubbles */
+.message-content .formatted-response,
+.message-content .summary-section {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+
+.message-content.assistant .summary-section {
+  background: transparent !important;
+}
+
+.message-content.assistant .summary-content h4 {
+  color: #1c64e7 !important;
+  margin-top: 0 !important;
+  font-size: 1.1rem !important;
+}
+
+.message-content.assistant .view-full-table-btn.primary {
+  background-color: #1c64e7 !important;
+  font-size: 0.9rem !important;
+}
+
+.message-content.assistant .view-full-table-btn.primary:hover {
+  background-color: #1557c7 !important;
+}
+
+/* Ensure table previews look good in chat bubbles */
+.message-content .preview-table table {
+  font-size: 0.85rem !important;
+  margin-top: 8px;
+}
+
+.message-content .preview-table th,
+.message-content .preview-table td {
+  padding: 6px 8px;
+  font-size: 0.85rem !important;
+}
+
+/* Fix text color in user messages */
+.message-content.user .message-text,
+.message-content.user .formatted-response {
+  color: white !important;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+
+.message-content.user .summary-content h4,
+.message-content.user .summary-text,
+.message-content.user .key-insights {
+  color: white !important;
+  font-size: 0.95rem !important;
+}
+
+/* Consistent paragraph spacing */
+.message-content p {
+  margin: 0.5em 0 !important;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Consistent list formatting */
+.message-content ul,
+.message-content ol {
+  margin: 0.5em 0 !important;
+  padding-left: 1.2em !important;
+}
+
+.message-content li {
+  margin: 0.2em 0 !important;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+
+/* Consistent heading sizes */
+.message-content h1,
+.message-content h2,
+.message-content h3,
+.message-content h4,
+.message-content h5,
+.message-content h6 {
+  margin: 0.5em 0 !important;
+  line-height: 1.3 !important;
+}
+
+.message-content h4 {
+  font-size: 1.1rem !important;
+}
+
+.message-content h5 {
+  font-size: 1rem !important;
+}
+
+/* Make sure all text elements are consistent */
+.message-content * {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+}

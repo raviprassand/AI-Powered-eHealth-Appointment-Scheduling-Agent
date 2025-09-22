@@ -1,0 +1,273 @@
+:root {
+  --primary-color: #4285f4;
+  --primary-dark: #3367d6;
+  --text-color: #333333;
+  --light-bg: #f5f5f5;
+  --white: #ffffff;
+  --border-color: #e0e0e0;
+  --user-message-bg: #e6f7ff;
+  --assistant-message-bg: #f2f2f2;
+  --shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+@import './chat.css';
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--light-bg);
+  color: var(--text-color);
+}
+
+.app {
+  display: flex;
+  justify-content: center;
+  height: 100vh;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  width: 90%;
+  max-width: 800px;
+  height: 100%;
+  background-color: var(--white);
+  box-shadow: var(--shadow);
+}
+
+.chat-header {
+  padding: 15px;
+  background-color: var(--primary-color);
+  color: var(--white);
+  text-align: center;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.chat-footer {
+  border-top: 1px solid var(--border-color);
+}
+
+.audio-player-container {
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.audio-player {
+  width: 100%;
+  max-width: 400px;
+}
+
+.chat-input-container {
+  padding: 15px;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 10px;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 16px;
+}
+
+.send-button {
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  border-radius: 4px;
+  padding: 0 20px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.send-button:hover {
+  background-color: var(--primary-dark);
+}
+
+.send-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  text-align: center;
+  color: #888;
+  margin: 20px 0;
+}
+
+/* Voice/Send Button Styles */
+.input-button-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--primary-color);
+  color: var(--white);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+}
+
+.input-button:hover {
+  background-color: var(--primary-dark);
+}
+
+.input-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Modified chat input to accommodate button positioning */
+.chat-input-form {
+  display: flex;
+  width: 100%;
+  position: relative;
+}
+
+.chat-input {
+  flex: 1;
+  padding: 12px 50px 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 20px; /* Rounded like ChatGPT */
+  font-size: 16px;
+  resize: none;
+  line-height: 1.4;
+  min-height: 52px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.chat-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+.chat-input-container {
+  padding: 15px;
+  width: 100%;
+}
+
+/* ChatGPT-like bottom bar */
+.chat-footer {
+  border-top: 1px solid var(--border-color);
+  padding: 10px 0;
+  background-color: var(--white);
+}
+
+/* Icon styles */
+.icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* Animation for button transition */
+@keyframes rotate {
+  from { transform: rotate(-90deg); }
+  to { transform: rotate(0); }
+}
+
+.send-arrow {
+  animation: rotate 0.3s forwards;
+}
+
+/* Focus visual indicator */
+.input-active .chat-input {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+/* Add to your CSS file (main.css or a new recording.css) */
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d32f2f;
+  font-size: 14px;
+  margin-top: 8px;
+  padding-left: 10px;
+}
+
+.recording-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #d32f2f;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.6; transform: scale(0.9); }
+}
+
+.input-button.recording {
+  background-color: #d32f2f;
+}
+/* Add to your CSS file */
+.processing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4285f4;
+  font-size: 14px;
+  margin-top: 8px;
+  padding-left: 10px;
+}
+
+.processing-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #4285f4;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite ease-in-out;
+}
+
+.input-button.processing {
+  background-color: #4285f4;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,149 @@
+.chat-message {
+  display: flex;
+  margin-bottom: 15px;
+  align-items: flex-start;
+}
+
+.user-message {
+  justify-content: flex-end;
+}
+
+.assistant-message {
+  justify-content: flex-start;
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+.user-message .avatar {
+  order: 2;
+  margin-left: 10px;
+  margin-right: 0;
+  background-color: var(--user-message-bg);
+}
+
+.assistant-message .avatar {
+  background-color: var(--assistant-message-bg);
+}
+
+.message-content {
+  max-width: 70%;
+  padding: 10px 15px;
+  border-radius: 15px;
+  font-size: 14px;
+}
+
+.user-message .message-content {
+  background-color: var(--user-message-bg);
+  text-align: right;
+}
+
+.assistant-message .message-content {
+  background-color: var(--assistant-message-bg);
+}
+
+/* Markdown styles */
+.message-content p {
+  margin-bottom: 0.5rem;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message-content ul, .message-content ol {
+  margin-left: 1.5rem;
+}
+
+.message-content code {
+  background-color: rgba(0, 0, 0, 0.05);
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-family: monospace;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .message-content {
+    max-width: 85%;
+  }
+  
+  /* Processing indicator for voice messages */
+  .processing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+  }
+  
+  .dot {
+    width: 8px;
+    height: 8px;
+    background-color: #888;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite ease-in-out;
+  }
+  
+  .dot:nth-child(2) {
+    animation-delay: 0.3s;
+  }
+  
+  .dot:nth-child(3) {
+    animation-delay: 0.6s;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+  
+  /* ChatGPT-style messages */
+  .chat-message {
+    display: flex;
+    margin-bottom: 20px;
+    padding: 10px 15px;
+  }
+  
+  .user-message {
+    background-color: var(--white);
+  }
+  
+  .assistant-message {
+    background-color: var(--light-bg);
+  }
+  
+  .avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    font-size: 16px;
+  }
+  
+  .message-content {
+    max-width: 90%;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .message-content {
+      max-width: 85%;
+    }
+    
+    .chat-input {
+      font-size: 14px;
+    }
+  }
+}
