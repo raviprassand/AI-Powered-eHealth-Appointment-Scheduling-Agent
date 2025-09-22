@@ -1,0 +1,62 @@
+# Python virtual environment
+venv/
+env/
+ENV/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Environment variables and secrets
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.DS_Store
+
+# Local development
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Database
+*.sqlite3
+*.db
+
+# Generated files
+audio/
+temp/
+*.mp3
+*.wav
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Docker
+docker-compose.override.yml
+Dockerfile.local
+
+# Temporary audio/media files
+temp_audio_*.mp3
+temp_audio_*.wav
