@@ -1,5 +1,30 @@
+
 import os
 import logging
+from dotenv import load_dotenv
+base_dir = os.path.dirname(os.path.abspath(__file__))  # /app
+project_root = os.path.dirname(base_dir)  # go up one level → project folder
+env_path = os.path.join(project_root, ".env")
+
+print("📂 Running file:", __file__)
+print("📂 Current working directory:", os.getcwd())
+print("📁 Trying to load .env from:", env_path)
+
+loaded = load_dotenv(dotenv_path=env_path, override=True)
+print("✅ load_dotenv() returned:", loaded)
+
+if os.path.exists(env_path):
+    print("📄 .env file found!")
+else:
+    print("❌ .env file NOT found!")
+
+api_key = os.getenv("OPENAI_API_KEY")
+if api_key:
+    print("🔑 OPENAI_API_KEY (first 25 chars):", api_key[:25])
+else:
+    print("🚨 OPENAI_API_KEY is missing or not loaded!")
+
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -41,12 +66,7 @@ app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://health-informatics-frontend-593822281192.northamerica-northeast2.run.app",
-        "https://health-informatics-frontend-593822281192.us-central1.run.app",
-        "http://localhost:3000",  # For local development
-        "http://localhost:5173",  # Vite dev server
-    ],
+    allow_origins=["*"],  # <-- temporarily allow all for testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
