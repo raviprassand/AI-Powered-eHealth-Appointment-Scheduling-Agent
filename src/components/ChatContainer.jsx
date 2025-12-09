@@ -1,16 +1,12 @@
-// src/components/ChatContainer.jsx - Updated
+// src/components/ChatContainer.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
 import AudioPlayer from './AudioPlayer';
 import { sendMessage } from '../api/chat';
-import './ChatContainer.css';
 
-// Add this at the top after imports
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-const BACKEND_URL = API_BASE_URL.replace('/api/v1', ''); // Gets base backend URL
-
-
+const BACKEND_URL = API_BASE_URL.replace('/api/v1', '');
 
 const ChatContainer = ({ patientId = null }) => {
   const [messages, setMessages] = useState([]);
@@ -20,7 +16,7 @@ const ChatContainer = ({ patientId = null }) => {
   
   const messagesEndRef = useRef(null);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -28,15 +24,14 @@ const ChatContainer = ({ patientId = null }) => {
   useEffect(() => {
     if (patientId !== currentPatientId) {
       setCurrentPatientId(patientId);
-      setMessages([]); // Clear chat history when patient changes
-      setCurrentAudio(null); // Clear any playing audio
+      setMessages([]); 
+      setCurrentAudio(null);
     }
   }, [patientId, currentPatientId]);
 
   const handleSendMessage = async (text) => {
     if (!text.trim()) return;
     
-    // Add user message with timestamp
     setMessages(prev => [...prev, { 
       role: 'user', 
       content: text,
@@ -46,10 +41,8 @@ const ChatContainer = ({ patientId = null }) => {
     setLoading(true);
     
     try {
-      // Send to API and get response
       const response = await sendMessage(text, currentPatientId);
       
-      // Add assistant message
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: response.message,
@@ -57,7 +50,6 @@ const ChatContainer = ({ patientId = null }) => {
         timestamp: new Date()
       }]);
       
-      // Set audio URL for playback if available
       if (response.audio_url) {
         setTimeout(() => {
           setCurrentAudio(`${BACKEND_URL}${response.audio_url}`);
@@ -65,31 +57,14 @@ const ChatContainer = ({ patientId = null }) => {
       }
     } catch (error) {
       console.error('Error getting response:', error);
-      
       let errorMessage = 'Sorry, I encountered an error processing your request.';
-      
-      if (error.code === 'ECONNABORTED') {
-        errorMessage = '⏰ Request timed out. Please try again with a shorter query.';
-      } else if (error.response) {
-        // Server responded with error status
-        errorMessage = `Server error: ${error.response.status}. Please try again.`;
-      } else if (error.request) {
-        // Network error
-        errorMessage = '🌐 Network error. Please check your connection and try again.';
-      }
-      
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: errorMessage,
-        timestamp: new Date()
-      }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMessage, timestamp: new Date() }]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleVoiceInput = async (audioBlob) => {
-    // Add voice message UI indicator
     setMessages(prev => [...prev, { 
       role: 'user', 
       content: '🎤 Voice message...',
@@ -100,15 +75,14 @@ const ChatContainer = ({ patientId = null }) => {
     setLoading(true);
     
     try {
-      const transcription = "This is a simulated voice message";
+      // Simulate transcription for now (or hook up real STT here)
+      const transcription = "This is a simulated voice message"; 
       
-      // Update the message with the transcription
       setMessages(prev => prev.map((msg, i) => 
         i === prev.length - 1 ? { ...msg, content: transcription, isProcessing: false } : msg
       ));
       
-      // Now process like a regular message
-      const response = await sendMessage(transcription,currentPatientId);
+      const response = await sendMessage(transcription, currentPatientId);
       
       setMessages(prev => [...prev, { 
         role: 'assistant', 
@@ -124,96 +98,77 @@ const ChatContainer = ({ patientId = null }) => {
       }
     } catch (error) {
       console.error('Error processing voice input:', error);
-      setMessages(prev => prev.map((msg, i) => 
-        i === prev.length - 1 ? { ...msg, content: "Voice processing failed", isProcessing: false } : msg
-      ));
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle prompt card clicks
-  const handlePromptClick = (promptText) => {
-    handleSendMessage(promptText);
-  };
-
   return (
-    <div className="chatgpt-container">
-      {/* Main chat area */}
-      <div className="chat-main">
+    <div className="chat-container">
+      {/* 1. Header */}
+      <div className="chat-header">
+        Health Informatics AI
+      </div>
+
+      {/* 2. Messages Area */}
+      <div className="chat-messages">
         {messages.length === 0 ? (
-          // Initial empty state
-          <div className="chat-empty-state">
-            <div className="empty-state-content">
-              <h1>Health Informatics AI</h1>
-              <p>Ask me about patient data and medical information</p>
-              <div className="example-prompts">
-                <div 
-                  className="prompt-card"
-                  onClick={() => handlePromptClick("Show me treatment history")}
-                >
-                  <span>Show me treatment history</span>
-                </div>
-                <div 
-                  className="prompt-card"
-                  onClick={() => handlePromptClick("What are the pathology results?")}
-                >
-                  <span>What are the pathology results?</span>
-                </div>
-                <div 
-                  className="prompt-card"
-                  onClick={() => handlePromptClick("Get patient registration details")}
-                >
-                  <span>Get patient registration details</span>
-                </div>
-              </div>
+          <div className="chat-empty-state" style={{ textAlign: 'center', marginTop: '40px' }}>
+            {/* UPDATED: Generic Title */}
+            <h1 style={{ color: '#0056b3' }}>Health Informatics AI</h1>
+            <p>Select a common query or type your own below.</p>
+            
+            <div style={{ marginTop: '30px' }}>
+              <button className="suggestion-btn" onClick={() => handleSendMessage("Show me treatment history")}>
+                <i className="fa-solid fa-notes-medical" style={{marginRight: '10px', color: '#0056b3'}}></i>
+                Show me treatment history
+              </button>
+              
+              <button className="suggestion-btn" onClick={() => handleSendMessage("What are the pathology results?")}>
+                <i className="fa-solid fa-microscope" style={{marginRight: '10px', color: '#0056b3'}}></i>
+                What are the pathology results?
+              </button>
+              
+              {/* REMOVED: The third button is gone now */}
             </div>
           </div>
         ) : (
-          // Messages area
-          <div className="chat-messages-area">
-            <div className="messages-container">
-              {messages.map((msg, index) => (
-                <ChatMessage 
-                  key={index}
-                  role={msg.role}
-                  content={msg.content}
-                  formattedResponse={msg.formattedResponse}
-                  isProcessing={msg.isProcessing}
-                  timestamp={msg.timestamp}
-                />
-              ))}
-              {loading && (
-                <div className="message-wrapper assistant">
-                  <div className="message-content assistant">
-                    <div className="typing-indicator">
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
-                      <div className="typing-dot"></div>
-                    </div>
-                  </div>
+          <>
+            {messages.map((msg, index) => (
+              <ChatMessage 
+                key={index}
+                role={msg.role}
+                content={msg.content}
+                formattedResponse={msg.formattedResponse}
+                isProcessing={msg.isProcessing}
+                timestamp={msg.timestamp}
+              />
+            ))}
+            {loading && (
+              <div className="chat-message assistant-message">
+                <div className="avatar">AI</div>
+                <div className="message-content">
+                  <div className="spinner"></div>
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </>
         )}
       </div>
-      
-      {/* Fixed input area */}
-      <div className="chat-input-area">
-        <div className="input-container">
-          {currentAudio && (
-            <div className="audio-player-wrapper">
-              <AudioPlayer src={currentAudio} autoPlay={true} />
-            </div>
-          )}
-          <ChatInput 
-            onSendMessage={handleSendMessage} 
-            onVoiceInput={handleVoiceInput}
-            disabled={loading} 
-          />
-        </div>
+
+      {/* 3. Footer (Input & Audio) */}
+      <div className="chat-footer">
+        {currentAudio && (
+          <div className="audio-player-wrapper" style={{ marginBottom: '15px' }}>
+            <AudioPlayer src={currentAudio} autoPlay={true} />
+          </div>
+        )}
+        <ChatInput 
+          onSendMessage={handleSendMessage} 
+          onVoiceInput={handleVoiceInput}
+          disabled={loading} 
+        />
       </div>
     </div>
   );
