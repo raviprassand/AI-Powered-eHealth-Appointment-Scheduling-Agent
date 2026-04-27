@@ -1,7 +1,8 @@
 # AI-Powered eHealth Appointment Scheduling Agent
 
-An end-to-end eHealth platform that helps patients book and manage appointments with family doctors and specialists.  
-The system uses a modular **FastAPI backend** and a **React frontend**, with integrations to a relational database and notification tables for portal alerts.
+An end-to-end eHealth platform that enables patients to interact using natural language to book appointments, retrieve medical records, and receive intelligent responses.
+
+The system combines a modular **FastAPI backend** with a **React frontend**, enhanced with **LLM-based intent understanding** and **RAG-based patient context retrieval**.
 
 ---
 
@@ -9,45 +10,65 @@ The system uses a modular **FastAPI backend** and a **React frontend**, with int
 
 This repository is organized as a **monorepo** with two main branches:
 
-- **`backend` branch** – FastAPI application for:
-  - Booking appointments
-  - Validating patient, doctor, and schedule information
+- **`backend` branch** – FastAPI application responsible for:
+  - Conversational appointment booking
+  - LLM-based intent extraction
+  - RAG-based patient data retrieval
+  - Validation of patient, doctor, and schedule constraints
   - Writing notifications into `message_pat_to_doctor` table
   - Exposing REST APIs for the patient portal
 
 - **`frontend` branch** – React-based patient and doctor portal:
   - Search & book appointments
   - View upcoming and past appointments
-  - View notifications and error messages when booking fails
-  - View patient history and lab record history (improved UI)
+  - View notifications and error messages
+  - View patient history and lab record history (enhanced UI)
 
-> The `main` branch is used as the documentation and integration branch.  
-> Application source code lives in the **`backend`** and **`frontend`** branches.
+> The `main` branch is used for documentation and integration notes.  
+> Application source code is maintained in the **`backend`** and **`frontend`** branches.
 
 ---
 
 ## ✨ Key Features
 
-- Patient login and appointment scheduling
-- Doctor selection based on `family_doctor_id` and availability
-- Storage of confirmed appointments in `dev1.appointment`
-- Creation of notification messages in `message_pat_to_doctor` for portal display
-- Improved UI for:
+- Conversational appointment booking using natural language
+- LLM-based intent extraction for user requests
+- RAG-based retrieval of patient-specific data (medical history, lab tests, prescriptions)
+- Doctor selection based on `family_doctor_id`
+- Appointment conflict detection and validation
+- Storage of confirmed appointments in `appointment` table
+- Notification creation in `message_pat_to_doctor` for portal display
+- Enhanced UI for:
   - Patient history
-  - Lab record history
-  - Error messages when appointment booking fails
-- Separate, clean codebases for backend and frontend
+  - Lab records
+  - Booking failure handling
+- Modular and scalable backend architecture
+
+---
+
+## 🤖 AI Components
+
+The backend integrates AI in a controlled and safe manner:
+
+- **LLM (Large Language Model)**  
+  Used for understanding user intent and extracting structured information from natural language.
+
+- **RAG (Retrieval-Augmented Generation)**  
+  Retrieves patient-specific data before generating responses, ensuring accuracy and reducing hallucinations.
+
+- **Deterministic Backend Logic**  
+  Critical operations (e.g., appointment booking) are validated and executed by backend rules, not by the LLM.
 
 ---
 
 ## 🔀 Branch Structure
 
-- `main` – Documentation, high-level overview, and integration notes
+- `main` – Documentation and overview  
 - `backend` – FastAPI backend service  
-- `frontend` – React frontend application
+- `frontend` – React frontend application  
 
-You can switch branches using:
+Switch branches using:
 
 ```bash
-git checkout backend     # for backend code
-git checkout frontend    # for frontend code
+git checkout backend
+git checkout frontend
