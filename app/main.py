@@ -1,114 +1,165 @@
+# app/main.py
 
 import os
 import logging
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
-base_dir = os.path.dirname(os.path.abspath(__file__))  # /app
-project_root = os.path.dirname(base_dir)  # go up one level → project folder
-env_path = os.path.join(project_root, ".env")
-
-print("📂 Running file:", __file__)
-print("📂 Current working directory:", os.getcwd())
-print("📁 Trying to load .env from:", env_path)
-
-loaded = load_dotenv(dotenv_path=env_path, override=True)
-print("✅ load_dotenv() returned:", loaded)
-
-if os.path.exists(env_path):
-    print("📄 .env file found!")
-else:
-    print("❌ .env file NOT found!")
-
-api_key = os.getenv("OPENAI_API_KEY")
-if api_key:
-    print("🔑 OPENAI_API_KEY (first 25 chars):", api_key[:25])
-else:
-    print("🚨 OPENAI_API_KEY is missing or not loaded!")
-
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+
 from app.core.config import settings
 from app.core.database import db_manager
 from app.routers import chat
 
-# Configure logging
+
+# =====================================================================
+# Load environment
+# =====================================================================
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(base_dir)
+env_path = os.path.join(project_root, ".env")
+
+load_dotenv(dotenv_path=env_path, override=True)
+
+
+# =====================================================================
+# Logging
+# =====================================================================
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+# =====================================================================
+# App lifecycle
+# =====================================================================
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
     logger.info("🚀 Application starting up...")
-    
-    # Initialize and test database connection
+
+    # ---------------------------------------------------------
+    # DB health check
+    # ---------------------------------------------------------
     try:
         if db_manager.test_connection():
-            logger.info("✅ Database connection pool ready")
-            pool_status = db_manager.get_pool_status()
-            logger.info(f"📊 Pool status: {pool_status}")
+            logger.info("✅ Database API connection ready")
+            logger.info(f"📊 DB Status: {db_manager.get_pool_status()}")
         else:
-            logger.error("❌ Database connection failed - check credentials")
-    except Exception as e:
-        logger.error(f"❌ Database initialization error: {e}")
-    
-    logger.info(f"🌐 Port: {os.environ.get('PORT', '8080')}")
-    
+            logger.warning("⚠️ Database connection not verified")
+    except Exception as exc:
+        logger.error(f"❌ DB initialization error: {exc}")
+
+    # ---------------------------------------------------------
+    # LLM / RAG status logging
+    # ---------------------------------------------------------
+    logger.info(f"🤖 LLM Enabled: {settings.USE_LLM_INTENT}")
+    logger.info(f"📚 RAG Enabled: {settings.USE_RAG}")
+    logger.info(f"🔎 Vector Search Enabled: {settings.USE_VECTOR_SEARCH}")
+
+    logger.info(f"🌐 Running on port: {os.environ.get('PORT', '8080')}")
+
     yield
-    
-    # Shutdown
+
     logger.info("🔄 Application shutting down...")
     db_manager.close_connections()
-    logger.info("✅ Application shutdown complete")
+    logger.info("✅ Shutdown complete")
 
-app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
-# Configure CORS
+# =====================================================================
+# FastAPI app
+# =====================================================================
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+)
+
+
+# =====================================================================
+# CORS
+# =====================================================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # <-- temporarily allow all for testing
+    allow_origins=["*"],  # tighten in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Include routers
+
+# =====================================================================
+# Routes
+# =====================================================================
+
 app.include_router(chat.router, prefix=settings.API_V1_STR)
+
+
+# =====================================================================
+# Root endpoint
+# =====================================================================
 
 @app.get("/")
 def root():
-    logger.info("Root endpoint called")
     return {
-        "message": "Health Informatics API with OpenAI + Connection Pooling", 
+        "message": "AI-powered Health Informatics API",
         "status": "healthy",
-        "database": "pooled"
+        "features": {
+            "llm_intent": settings.USE_LLM_INTENT,
+            "rag": settings.USE_RAG,
+            "vector_search": settings.USE_VECTOR_SEARCH,
+        },
     }
+
+
+# =====================================================================
+# Health check
+# =====================================================================
 
 @app.get("/health")
 def health_check():
-    """Enhanced health check endpoint"""
     db_healthy = db_manager.test_connection()
-    pool_status = db_manager.get_pool_status()
-    
+
     return {
-        "status": "healthy" if db_healthy else "unhealthy",
-        "database": "connected" if db_healthy else "disconnected",
-        "pool_status": pool_status,
-        "ai_provider": "openai",
-        "platform": "optimized-local"
+        "status": "healthy" if db_healthy else "degraded",
+        "database": db_manager.get_pool_status(),
+        "llm_enabled": bool(settings.OPENAI_API_KEY),
+        "rag_enabled": settings.USE_RAG,
     }
 
-@app.get("/debug/pool")
-def pool_debug():
-    """Debug endpoint to check pool status"""
+
+# =====================================================================
+# Debug endpoints
+# =====================================================================
+
+@app.get("/debug/system")
+def system_debug():
     return {
-        "pool_status": db_manager.get_pool_status(),
-        "connection_test": db_manager.test_connection()
+        "env_loaded": True,
+        "llm_model": settings.LLM_MODEL,
+        "embedding_model": settings.EMBEDDING_MODEL,
+        "use_llm_intent": settings.USE_LLM_INTENT,
+        "use_rag": settings.USE_RAG,
+        "use_vector": settings.USE_VECTOR_SEARCH,
     }
 
-# For Cloud Run
+
+# =====================================================================
+# Local run
+# =====================================================================
+
 if __name__ == "__main__":
     import uvicorn
+
     port = int(os.environ.get("PORT", 8080))
     logger.info(f"Starting server on port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)
+
+    uvicorn.run(
+        "app.main:app",
+        host="0.0.0.0",
+        port=port,
+        reload=True,
+    )

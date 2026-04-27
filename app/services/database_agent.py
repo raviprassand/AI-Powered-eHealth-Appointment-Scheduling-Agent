@@ -1,58 +1,119 @@
-import requests
+# app/services/database_agent.py
+
 import logging
 import time
+from typing import Dict, Any, List, Optional
 from textwrap import shorten
+
+from app.core.database import get_db
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseAgent:
     """
-    Handles patient-specific data queries via API or local SQL.
-    Uses table mapping and outputs neatly formatted results.
+    Handles patient-specific data queries.
+
+    Upgraded capabilities:
+    - Accepts LLM intent + entities
+    - Uses RAG context if provided
+    - Falls back to rule-based table mapping
+    - Returns structured + formatted output
     """
 
-    def __init__(self, patient_id: int):
-        self.patient_id = patient_id
-        self.api_url = settings.DATABASE_API_URL
-        self.sql_uri = settings.SQL_URI
-        self.use_api = settings.USE_DB_API or (self.api_url and self.api_url.startswith("http"))
+    def __init__(self, patient_id: str):
+        self.patient_id = str(patient_id)
+        self.db = get_db()
         logger.info(f"🧠 DatabaseAgent initialized for patient {self.patient_id}")
 
-    # -------------------- Query Runner --------------------
-    def run_query(self, user_query: str):
+    # =================================================================
+    # MAIN ENTRY
+    # =================================================================
+    def run_query(
+        self,
+        query: str,
+        intent: Optional[str] = None,
+        entities: Optional[Dict[str, Any]] = None,
+        rag_context: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+
         start_time = time.time()
-        logger.info(f"🚀 Starting query: {user_query}")
+        entities = entities or {}
+        rag_context = rag_context or []
 
-        # Map to table
-        table_name = self.map_query_to_table(user_query)
-        logger.info(f"🎯 Mapped query → table: {table_name}")
+        logger.info(f"🚀 Running query: {query}")
+        logger.info(f"📌 Intent: {intent}")
 
-        params = {"patient_id": str(self.patient_id)}
-        if self.use_api:
-            url = f"{self.api_url}/table/{table_name}"
-        else:
-            url = f"{self.sql_uri}/table/{table_name}"
+        # ---------------------------------------------------------
+        # 1. Determine table
+        # ---------------------------------------------------------
+        table_name = self._resolve_table(query, intent)
+        logger.info(f"🎯 Selected table: {table_name}")
 
-        logger.info(f"🔗 Routing to API: {url} params={params}")
-
+        # ---------------------------------------------------------
+        # 2. Fetch records from DB
+        # ---------------------------------------------------------
         try:
-            response = requests.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
-            records = data.get("records") or data.get("data") or []
-            logger.info(f"✅ Query completed for table {table_name}")
-        except Exception as e:
-            logger.error(f"❌ Error executing query: {e}", exc_info=True)
-            return f"⚠️ Could not fetch records from {table_name}."
+            records = self.db.fetch_all(
+                table=table_name,
+                where={"patient_id": self.patient_id},
+            )
+            logger.info(f"✅ Retrieved {len(records)} records from {table_name}")
+        except Exception as exc:
+            logger.error(f"❌ DB fetch failed: {exc}", exc_info=True)
+            return {
+                "message": f"⚠️ Could not fetch records from {table_name}.",
+                "formatted_response": None,
+            }
 
-        formatted = self.format_table_pretty(table_name, records)
-        logger.info(f"🏁 DatabaseAgent completed in {time.time() - start_time:.2f}s")
-        return formatted
+        # ---------------------------------------------------------
+        # 3. Merge with RAG context if available
+        # ---------------------------------------------------------
+        merged_records = self._merge_rag_context(records, rag_context)
 
-    # -------------------- Table Mapper --------------------
-    def map_query_to_table(self, query: str) -> str:
+        # ---------------------------------------------------------
+        # 4. Format output
+        # ---------------------------------------------------------
+        formatted = self._format_table_pretty(table_name, merged_records)
+
+        logger.info(f"🏁 Completed in {time.time() - start_time:.2f}s")
+
+        return {
+            "message": formatted,
+            "formatted_response": {
+                "table": table_name,
+                "record_count": len(records),
+            },
+        }
+
+    # =================================================================
+    # TABLE RESOLUTION
+    # =================================================================
+    def _resolve_table(self, query: str, intent: Optional[str]) -> str:
+        """
+        Prefer LLM intent → fallback to keyword mapping
+        """
+
+        if intent:
+            mapping = {
+                "patient_history_query": "medical_history",
+                "prescription_query": "prescription",
+                "lab_results_query": "lab_tests",
+                "billing_query": "billing_records",
+                "appointment_history_query": "appointments",
+                "vitals_query": "vitals_history",
+                "feedback_query": "patient_feedback",
+            }
+            if intent in mapping:
+                return mapping[intent]
+
+        # fallback keyword mapping
+        return self._map_query_to_table(query)
+
+    def _map_query_to_table(self, query: str) -> str:
         q = query.lower()
+
         if "treatment" in q or "medical" in q or "history" in q:
             return "medical_history"
         if "prescription" in q or "medicine" in q:
@@ -67,45 +128,93 @@ class DatabaseAgent:
             return "patient_feedback"
         if "vital" in q:
             return "vitals_history"
+
         return "medical_history"
 
-    # -------------------- Pretty Table Formatter --------------------
-    def format_table_pretty(self, table_name: str, records: list) -> str:
-        """Formats records in a readable fixed-width table (for plain text UIs)."""
+    # =================================================================
+    # RAG MERGING
+    # =================================================================
+    def _merge_rag_context(
+        self,
+        records: List[Dict[str, Any]],
+        rag_context: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Optionally enrich results using RAG context.
+
+        Current simple approach:
+        - Append RAG-derived info as synthetic records
+        """
+
+        if not settings.USE_RAG or not rag_context:
+            return records
+
+        enriched = list(records)
+
+        for item in rag_context[: settings.RAG_TOP_K]:
+            enriched.append({
+                "rag_source": item.get("source"),
+                "rag_content": item.get("content"),
+                "rag_score": item.get("score"),
+            })
+
+        return enriched
+
+    # =================================================================
+    # FORMATTING
+    # =================================================================
+    def _format_table_pretty(self, table_name: str, records: list) -> str:
         if not records:
             return f"No records found for {table_name.replace('_', ' ')}."
 
         if table_name == "medical_history":
             headers = ["Diagnosis Date", "Condition", "Status", "Severity", "Doctor", "Follow-up"]
-            rows = []
-            for r in records[:10]:  # show top 10 for brevity
-                rows.append([
-                    r.get("diagnosis_date", "—"),
-                    r.get("condition", "—"),
-                    r.get("status", "—"),
-                    r.get("severity", "—"),
-                    f"Dr.{r.get('diagnosed_by', '—')}",
-                    "Yes" if r.get("followup_required") else "No"
-                ])
-            return self.make_ascii_table(headers, rows, title="📋 Treatment History")
 
-        # Generic for others
+            rows = []
+            for r in records[:10]:
+                rows.append([
+                    str(r.get("diagnosis_date", "—")),
+                    str(r.get("condition", "—")),
+                    str(r.get("status", "—")),
+                    str(r.get("severity", "—")),
+                    f"Dr.{r.get('diagnosed_by', '—')}",
+                    "Yes" if r.get("followup_required") else "No",
+                ])
+
+            return self._make_ascii_table(headers, rows, title="📋 Treatment History")
+
+        # generic fallback
         headers = list(records[0].keys())
         rows = [[str(v) for v in rec.values()] for rec in records[:10]]
-        return self.make_ascii_table(headers, rows, title=f"📊 {table_name.replace('_', ' ').title()}")
 
-    # -------------------- ASCII Table Maker --------------------
-    def make_ascii_table(self, headers, rows, title=""):
-        """Formats data into fixed-width ASCII table."""
-        col_widths = [max(len(str(col)) for col in [h] + [r[i] for r in rows]) + 2 for i, h in enumerate(headers)]
+        return self._make_ascii_table(
+            headers,
+            rows,
+            title=f"📊 {table_name.replace('_', ' ').title()}",
+        )
+
+    def _make_ascii_table(self, headers, rows, title=""):
+        col_widths = [
+            max(len(str(col)) for col in [h] + [r[i] for r in rows]) + 2
+            for i, h in enumerate(headers)
+        ]
 
         output = [f"{title}\n"]
-        header_line = " | ".join(h.ljust(col_widths[i]) for i, h in enumerate(headers))
+
+        header_line = " | ".join(
+            h.ljust(col_widths[i]) for i, h in enumerate(headers)
+        )
         divider = "-+-".join("-" * w for w in col_widths)
+
         output.append(header_line)
         output.append(divider)
 
         for row in rows:
-            output.append(" | ".join(shorten(str(c), width=col_widths[i] - 2) for i, c in enumerate(row)))
+            output.append(
+                " | ".join(
+                    shorten(str(c), width=col_widths[i] - 2)
+                    for i, c in enumerate(row)
+                )
+            )
 
         return "\n".join(output)
