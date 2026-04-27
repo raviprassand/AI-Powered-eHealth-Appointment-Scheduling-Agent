@@ -265,6 +265,135 @@ def _extract_reason(
 # =====================================================================
 # Main booking function
 # =====================================================================
+def check_doctor_availability(doctor_id: str, appointment_datetime: datetime) -> bool:
+    """
+    Checks whether the doctor is available for the requested date/time.
+
+    Expected table: doctor_availability
+
+    Example columns:
+    - doctor_id
+    - day_of_week
+    - start_time
+    - end_time
+    - is_available
+    """
+
+    try:
+        db = get_db()
+
+        day_of_week = appointment_datetime.strftime("%A")
+        requested_time = appointment_datetime.strftime("%H:%M:%S")
+
+        availability_rows = db.fetch_all(
+            table="doctor_availability",
+            where={
+                "doctor_id": doctor_id,
+                "day_of_week": day_of_week,
+            },
+        )
+
+        if not availability_rows:
+            logger.warning(
+                "No availability found for doctor_id=%s on %s",
+                doctor_id,
+                day_of_week,
+            )
+            return False
+
+        for row in availability_rows:
+            is_available = row.get("is_available", True)
+
+            if str(is_available).lower() in {"false", "0", "no"}:
+                continue
+
+            start_time = str(row.get("start_time", "00:00:00"))
+            end_time = str(row.get("end_time", "23:59:59"))
+
+            if start_time <= requested_time <= end_time:
+                return True
+
+        return False
+
+    except Exception as exc:
+        logger.error("Doctor availability check failed: %s", exc, exc_info=True)
+
+        # Safer design: if availability cannot be verified, don't book.
+        return False
+
+
+def create_appointment_notifications(
+    patient_id: str,
+    doctor_id: str,
+    doctor_name: str,
+    appointment_datetime: datetime,
+    visit_reason: Optional[str] = None,
+) -> None:
+    """
+    Creates notification/message records after appointment booking.
+
+    Expected table: message_pat_to_doctor
+
+    The frontend doctor/patient portal can read this table and display alerts.
+    """
+
+    try:
+        db = get_db()
+
+        appointment_time = appointment_datetime.strftime("%A, %B %d at %I:%M %p")
+        now = datetime.now(pytz.timezone("America/Toronto")).strftime("%Y-%m-%d %H:%M:%S")
+
+        patient_message = (
+            f"Your appointment with {doctor_name} has been scheduled for {appointment_time}."
+        )
+
+        doctor_message = (
+            f"New appointment scheduled with patient {patient_id} for {appointment_time}."
+        )
+
+        if visit_reason:
+            patient_message += f" Reason noted: {visit_reason}."
+            doctor_message += f" Reason: {visit_reason}."
+
+        # Patient-facing notification
+        db.insert_one(
+            table="message_pat_to_doctor",
+            values={
+                "patient_id": str(patient_id),
+                "doctor_id": str(doctor_id),
+                "message": patient_message,
+                "sent_at": now,
+                "status": "Unread",
+                "is_urgent": False,
+                "delivered_at": None,
+                "reply_to": None,
+                "attachment_url": None,
+                "recipient_type": "patient",
+            },
+        )
+
+        # Doctor-facing notification
+        db.insert_one(
+            table="message_pat_to_doctor",
+            values={
+                "patient_id": str(patient_id),
+                "doctor_id": str(doctor_id),
+                "message": doctor_message,
+                "sent_at": now,
+                "status": "Unread",
+                "is_urgent": False,
+                "delivered_at": None,
+                "reply_to": None,
+                "attachment_url": None,
+                "recipient_type": "doctor",
+            },
+        )
+
+        logger.info("Appointment notifications created successfully")
+
+    except Exception as exc:
+        # Do not fail appointment just because notification failed.
+        logger.error("Notification creation failed: %s", exc, exc_info=True)
 
 def book_appointment(
     message: str,
@@ -340,6 +469,19 @@ def book_appointment(
     # ---------------------------------------------------------
     # 4. Conflict check
     # ---------------------------------------------------------
+        # ---------------------------------------------------------
+    # 4. Doctor availability check
+    # ---------------------------------------------------------
+    if not check_doctor_availability(str(family_doc_id), appointment_datetime):
+        return {
+            "success": False,
+            "message": (
+                f"⚠️ {family_doc_name} is not available on "
+                f"{appointment_datetime.strftime('%A, %B %d at %I:%M %p')}. "
+                "Please choose another available slot."
+            ),
+            "appointment": None,
+        }
     if check_conflict(family_doc_id, appointment_datetime):
         return {
             "success": False,
@@ -377,6 +519,13 @@ def book_appointment(
         insert_result = db.insert_one(
             table="appointments",
             values=payload,
+        )
+        create_appointment_notifications(
+            patient_id=str(patient_id),
+            doctor_id=str(family_doc_id),
+            doctor_name=family_doc_name,
+            appointment_datetime=appointment_datetime,
+            visit_reason=visit_reason,
         )
 
         return {
